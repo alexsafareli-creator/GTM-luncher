@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sell an AI Service From Scratch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Lato',sans-serif;background:#fff;color:#37352f;min-height:100vh}
+::-webkit-scrollbar{height:6px;width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#d3d1cb;border-radius:3px}
+
+/* NAV */
+.topnav{height:46px;border-bottom:1px solid #e9e9e7;display:flex;align-items:center;padding:0 20px;gap:6px;background:rgba(255,255,255,0.96);backdrop-filter:blur(8px);position:sticky;top:0;z-index:100}
+.breadcrumb{display:flex;align-items:center;gap:5px;font-size:13px;color:#9b9a97}
+.breadcrumb .crumb{cursor:pointer;padding:2px 4px;border-radius:3px;transition:background .1s}
+.breadcrumb .crumb:hover{background:#f1f1ef;color:#37352f}
+.breadcrumb .sep{color:#d3d1cb;font-size:12px}
+.breadcrumb .current{color:#37352f;font-weight:600}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.nav-progress-track{width:120px;height:4px;background:#e9e9e7;border-radius:2px;overflow:hidden}
+.nav-progress-fill{height:100%;background:#37352f;border-radius:2px;transition:width .5s ease}
+.nav-pct{font-size:12px;color:#37352f;font-weight:700;min-width:30px}
+.nav-tasks{font-size:11px;color:#9b9a97}
+.edit-mode-btn{font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid #e9e9e7;background:#fff;cursor:pointer;font-family:'Lato',sans-serif;transition:all .1s;display:flex;align-items:center;gap:5px}
+.edit-mode-btn:hover{background:#f7f7f5;border-color:#d3d1cb}
+.edit-mode-btn.active{background:#37352f;color:#fff;border-color:#37352f}
+.reset-btn{font-size:11px;color:#9b9a97;padding:3px 8px;border-radius:4px;border:1px solid #e9e9e7;background:#fff;cursor:pointer;font-family:'Lato',sans-serif;transition:all .1s}
+.reset-btn:hover{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+
+/* EDIT MODE BANNER */
+.edit-banner{background:#fffbeb;border-bottom:1px solid #fde68a;padding:8px 48px;font-size:12px;color:#92400e;display:flex;align-items:center;gap:8px}
+.edit-banner b{font-weight:700}
+
+/* HEADER */
+.page-header{padding:40px 48px 0}
+.page-emoji{font-size:52px;margin-bottom:12px;display:block;line-height:1}
+.page-title{font-size:38px;font-weight:900;color:#37352f;letter-spacing:-.5px;line-height:1.15;margin-bottom:8px}
+.page-subtitle{font-size:14px;color:#9b9a97;margin-bottom:20px;line-height:1.5}
+.props{display:flex;align-items:center;gap:2px;flex-wrap:wrap;margin-bottom:24px}
+.prop{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:4px;font-size:13px;cursor:default;transition:background .1s}
+.prop:hover{background:#f7f7f5}
+.prop-label{color:#9b9a97}
+.prop-sep{color:#d3d1cb;margin:0 2px}
+.prop-value{color:#37352f;font-weight:600}
+.page-divider{height:1px;background:#e9e9e7;margin:0 48px}
+
+/* TABS */
+.view-tabs{padding:12px 48px 0;display:flex;align-items:center;gap:2px;border-bottom:1px solid #e9e9e7}
+.tab{display:flex;align-items:center;gap:5px;padding:7px 10px;border-radius:4px 4px 0 0;font-size:13px;color:#9b9a97;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:background .1s}
+.tab.active{color:#37352f;font-weight:700;border-bottom-color:#37352f}
+.tab:hover:not(.active){background:#f7f7f5}
+
+/* BOARD */
+.board-wrap{overflow-x:auto;padding:20px 48px 60px;display:flex;gap:14px;align-items:flex-start}
+
+/* COLUMN */
+.col{width:272px;flex-shrink:0}
+.col-head{padding-bottom:10px}
+.col-title-row{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.col-emoji{font-size:15px}
+.col-name{font-size:13px;font-weight:700;color:#37352f;flex:1;line-height:1.3}
+.col-count{font-size:11px;color:#9b9a97;flex-shrink:0}
+.col-meta{display:flex;align-items:center;gap:7px;margin-bottom:9px}
+.step-badge{font-size:10px;font-weight:800;padding:2px 8px;border-radius:3px;letter-spacing:.5px;text-transform:uppercase;flex-shrink:0}
+.col-time{font-size:11px;color:#9b9a97}
+
+/* STATUS */
+.status-wrap{position:relative;margin-left:auto}
+.status-btn{display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:4px;border:1px solid #e9e9e7;background:#fff;cursor:pointer;font-size:11px;font-family:'Lato',sans-serif;color:#37352f;transition:background .1s;white-space:nowrap}
+.status-btn:hover{background:#f7f7f5}
+.status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.status-caret{color:#9b9a97;font-size:8px;margin-left:1px}
+.status-dropdown{position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid #e9e9e7;border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:300;min-width:150px;padding:4px}
+.status-opt{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:4px;cursor:pointer;font-size:13px;color:#37352f;transition:background .1s}
+.status-opt:hover{background:#f7f7f5}
+.status-opt-check{margin-left:auto;color:#9b9a97;font-size:12px}
+.col-progress-track{height:3px;background:#e9e9e7;border-radius:2px;overflow:hidden}
+.col-progress-fill{height:100%;border-radius:2px;transition:width .5s ease}
+
+/* CARDS */
+.cards{padding-top:10px}
+.card{background:#fff;border:1px solid #e9e9e7;border-radius:7px;margin-bottom:7px;overflow:hidden;transition:box-shadow .15s,border-color .15s}
+.card:hover{box-shadow:0 3px 10px rgba(0,0,0,.08);border-color:#d3d1cb}
+.card-head{padding:10px 12px 9px;display:flex;align-items:flex-start;gap:9px;cursor:pointer;user-select:none}
+.card-checkbox{width:16px;height:16px;border-radius:3px;border:1.5px solid #d3d1cb;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.card-checkbox.done{background:#37352f;border-color:#37352f}
+.card-checkbox.done::after{content:'✓';color:#fff;font-size:9px;font-weight:900;line-height:1}
+.card-body{flex:1;min-width:0}
+.card-title-text{font-size:13px;font-weight:600;color:#37352f;line-height:1.45}
+.card-title-text.done{color:#b0aea8;text-decoration:line-through;text-decoration-color:#c5c5c0}
+.card-footer{display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap}
+.tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:3px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap}
+.mini-track{flex:1;height:3px;background:#e9e9e7;border-radius:2px;overflow:hidden;max-width:70px}
+.mini-fill{height:100%;border-radius:2px;transition:width .4s ease}
+.task-counter{font-size:11px;color:#9b9a97;white-space:nowrap}
+.card-toggle{color:#c5c5c0;font-size:9px;flex-shrink:0;margin-top:3px;transition:transform .2s,color .15s}
+.card-toggle.open{transform:rotate(180deg)}
+.card:hover .card-toggle{color:#9b9a97}
+
+/* TASKS */
+.task-list{border-top:1px solid #f1f1ef;padding:6px 8px 8px}
+.task-row{display:flex;align-items:flex-start;gap:9px;padding:4px 7px;border-radius:4px;transition:background .1s;margin-bottom:1px;position:relative}
+.task-row:not(.editing):hover{background:#f7f7f5}
+.task-cb{width:14px;height:14px;border-radius:2px;border:1.5px solid #d3d1cb;flex-shrink:0;margin-top:3px;display:flex;align-items:center;justify-content:center;transition:all .12s;cursor:pointer}
+.task-cb.done{background:#37352f;border-color:#37352f}
+.task-cb.done::after{content:'✓';color:#fff;font-size:8px;font-weight:900;line-height:1}
+.task-label{font-size:12.5px;color:#37352f;line-height:1.6;flex:1;cursor:pointer}
+.task-label.done{color:#b0aea8;text-decoration:line-through;text-decoration-color:#d0ceca}
+
+/* EDIT CONTROLS */
+.task-edit-actions{display:flex;align-items:center;gap:4px;opacity:0;transition:opacity .15s;flex-shrink:0}
+.task-row:hover .task-edit-actions{opacity:1}
+.icon-btn{width:20px;height:20px;border-radius:3px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;color:#9b9a97;transition:all .1s;flex-shrink:0;padding:0}
+.icon-btn:hover{background:#f1f1ef;color:#37352f}
+.icon-btn.del:hover{background:#fef2f2;color:#b91c1c}
+
+/* INLINE EDIT INPUTS */
+.task-input{font-size:12.5px;color:#37352f;line-height:1.6;flex:1;border:none;outline:none;background:#fff;font-family:'Lato',sans-serif;border-radius:3px;padding:1px 4px;border:1px solid #2563eb;box-shadow:0 0 0 2px #dbeafe}
+.card-title-input{font-size:13px;font-weight:600;color:#37352f;line-height:1.45;border:none;outline:none;background:#fff;font-family:'Lato',sans-serif;width:100%;border-radius:3px;padding:1px 4px;border:1px solid #2563eb;box-shadow:0 0 0 2px #dbeafe}
+.col-name-input{font-size:13px;font-weight:700;color:#37352f;flex:1;line-height:1.3;border:none;outline:none;background:#fff;font-family:'Lato',sans-serif;border-radius:3px;padding:1px 4px;border:1px solid #2563eb;box-shadow:0 0 0 2px #dbeafe}
+
+/* ADD TASK ROW */
+.add-task-row{display:flex;align-items:center;gap:9px;padding:4px 7px;border-radius:4px;cursor:pointer;color:#9b9a97;font-size:12.5px;transition:all .1s;margin-top:2px}
+.add-task-row:hover{background:#f7f7f5;color:#37352f}
+.add-task-input-row{display:flex;align-items:center;gap:9px;padding:4px 7px;border-radius:4px;background:#f7f7f5;margin-top:2px}
+.add-task-input{font-size:12.5px;color:#37352f;flex:1;border:none;outline:none;background:transparent;font-family:'Lato',sans-serif;padding:1px 0}
+.add-task-confirm{font-size:11px;padding:3px 8px;border-radius:4px;border:1px solid #e9e9e7;background:#fff;cursor:pointer;font-family:'Lato',sans-serif;transition:all .1s}
+.add-task-confirm:hover{background:#37352f;color:#fff;border-color:#37352f}
+.add-task-cancel{font-size:11px;padding:3px 6px;border-radius:4px;border:none;background:transparent;cursor:pointer;color:#9b9a97;font-family:'Lato',sans-serif}
+.add-task-cancel:hover{color:#37352f}
+
+/* ADD CARD */
+.add-card-row{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:4px;font-size:13px;color:#9b9a97;cursor:pointer;transition:background .1s;margin-top:4px}
+.add-card-row:hover{background:#f7f7f5;color:#37352f}
+.add-card-form{background:#f7f7f5;border-radius:7px;padding:10px;margin-top:4px}
+.add-card-form input{width:100%;font-size:13px;font-weight:600;border:none;outline:none;background:#fff;font-family:'Lato',sans-serif;border-radius:4px;padding:6px 8px;border:1px solid #2563eb;box-shadow:0 0 0 2px #dbeafe;margin-bottom:8px}
+.add-card-actions{display:flex;gap:6px}
+.btn-primary{font-size:12px;padding:4px 12px;border-radius:4px;border:none;background:#37352f;color:#fff;cursor:pointer;font-family:'Lato',sans-serif;transition:background .1s}
+.btn-primary:hover{background:#1a1a1a}
+.btn-ghost{font-size:12px;padding:4px 8px;border-radius:4px;border:none;background:transparent;color:#9b9a97;cursor:pointer;font-family:'Lato',sans-serif;transition:all .1s}
+.btn-ghost:hover{color:#37352f;background:#e9e9e7}
+
+/* CARD EDIT ACTIONS */
+.card-edit-bar{display:none;align-items:center;gap:6px;padding:4px 10px 8px;justify-content:flex-end}
+.card.edit-mode .card-edit-bar{display:flex}
+.card-del-btn{font-size:11px;color:#9b9a97;padding:2px 8px;border-radius:4px;border:1px solid #e9e9e7;background:#fff;cursor:pointer;font-family:'Lato',sans-serif;transition:all .1s}
+.card-del-btn:hover{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+
+/* TOAST */
+.save-toast{position:fixed;bottom:20px;right:20px;background:#37352f;color:#fff;font-size:12px;padding:8px 14px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:999;opacity:0;transform:translateY(6px);transition:all .2s ease;pointer-events:none}
+.save-toast.show{opacity:1;transform:translateY(0)}
+
+.add-group{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;font-size:13px;color:#9b9a97;cursor:pointer;transition:background .1s;white-space:nowrap;flex-shrink:0;align-self:flex-start;margin-top:2px}
+.add-group:hover{background:#f7f7f5;color:#37352f}
+</style>
+</head>
+<body>
+<div class="save-toast" id="saveToast">✓ Saved</div>
+<div id="app"></div>
+<script>
+// ─── DEFAULT DATA ────────────────────────────────────────────────────────────
+const DEFAULT_BOARD = [
+  {id:"niche",icon:"🎯",label:"STEP 1",title:"Pick Your Niches",time:"~20 min",color:"#16a34a",badgeBg:"#dcfce7",badgeColor:"#15803d",cards:[
+    {id:"c1",title:"Niche Criteria Checklist",tag:"Validation",tagBg:"#dcfce7",tagColor:"#15803d",tasks:["100% digital business? (agency, SaaS, e-com, coaching — NOT brick & mortar)","Single sale/client generates $5,000+ for them?","US or low-compliance market?","No heavy compliance (no healthcare, legal, EU-GDPR)?","Can reach decision makers by email or LinkedIn?","10,000+ companies exist in this niche?"]},
+    {id:"c2",title:"Select & Validate Niche A",tag:"Research",tagBg:"#dbeafe",tagColor:"#1d4ed8",tasks:["Write down Niche A (e.g. 'PPC agencies')","Google '[niche] average client value' — confirm $5k+","LinkedIn search: confirm 10,000+ people in this niche","Niche A passes ALL 6 criteria ✓"]},
+    {id:"c3",title:"Select & Validate Niche B",tag:"Research",tagBg:"#dbeafe",tagColor:"#1d4ed8",tasks:["Write down Niche B (e.g. 'online coaches')","Google '[niche] average program price' — confirm $5k+","Check school.com or LinkedIn — large active pool confirmed","Niche B passes ALL 6 criteria ✓","Niches A & B are different enough to test separately"]},
+  ]},
+  {id:"offers",icon:"💡",label:"STEP 2",title:"Build Your Offers",time:"~45 min",color:"#ca8a04",badgeBg:"#fef9c3",badgeColor:"#854d0e",cards:[
+    {id:"c4",title:"Find Real Problems on Reddit",tag:"Research",tagBg:"#dbeafe",tagColor:"#1d4ed8",tasks:["Create free account at gummysearch.com","New Audience → type Niche A → auto-find subreddits","Review & adjust subreddit list → Create Audience","Search 'I hate' → sort by upvotes → read top 10 posts","Search title '?' → sort upvotes → read top 10 posts","Write down 2–3 recurring emotional problems for Niche A","Repeat full process for Niche B"]},
+    {id:"c5",title:"Validate Each Problem",tag:"Validation",tagBg:"#dcfce7",tagColor:"#15803d",tasks:["Problem mentioned by multiple different people?","Solving it = direct revenue gain or time saved?","Could AI/automation plausibly solve this?","Is this felt by the DECISION MAKER, not just an employee?"]},
+    {id:"c6",title:"Build AI Solutions",tag:"Build",tagBg:"#fef9c3",tagColor:"#854d0e",tasks:["Write each problem in one sentence (plain language)","Write a plausible AI-powered solution for each","Each solution has a tangible deliverable?","Could you deliver a basic version within 72 hours?","2 solutions per niche = 4 solutions total ✓"]},
+    {id:"c7",title:"Write Time-Bound Guarantees",tag:"Build",tagBg:"#fef9c3",tagColor:"#854d0e",tasks:["Formula: 'I will deliver [X] in [Y days] or [Z consequence]'","Promise is specific and measurable (not vague)","Consequence is strong: refund or work for free","Guarantee lowers risk to ZERO for the prospect","YOU would take this offer if pitched to you","4 offers total (2 per niche), each with a guarantee ✓"]},
+  ]},
+  {id:"leads",icon:"🔍",label:"STEP 3",title:"Scrape Your Leads",time:"~2–3 hrs",color:"#ea580c",badgeBg:"#ffedd5",badgeColor:"#9a3412",cards:[
+    {id:"c8",title:"Method A: Airscale + AnyMailFinder",tag:"Scraping",tagBg:"#ffedd5",tagColor:"#9a3412",tasks:["airscale.io → Find Companies → keyword + United States","Size 1–10 → Load 1,000 → export '[Niche]-Airscale-1to10'","Size 11–200 → export '[Niche]-Airscale-11to200'","Combine both CSVs in Google Sheets + add 'size' column","Scan 20 rows manually — 80%+ look correct?","Airscale: Find Domain with Google → run on all rows","anymailfinder.com → New Bulk → Decision Maker Search","Upload CSV → map Company Name + Domain → enrich","Download → label '[Niche]-Airscale-Emails'","40%+ of rows have an email? If not, add more rows."]},
+    {id:"c9",title:"Method B: Sales Nav + Vain.io",tag:"Scraping",tagBg:"#ffedd5",tagColor:"#9a3412",tasks:["LinkedIn Sales Nav → Job Titles: CEO, Founder, Owner, Partner","Keywords: 2–3 terms (e.g. 'performance agency', 'PPC')","Geography: United States only","Result count: 1,000–2,000. Adjust if outside range.","Open 10 random profiles — 8/10 match target buyer?","Copy the full Sales Nav URL","vain.io → New Order → paste URL → connect LinkedIn cookie","Download CSV → filter rows WITH emails → save separately","Upload remaining to anymailfinder → Person Name Search","Combine both files → label '[Niche]-SalesNav-Emails'","700+ emails in combined list? If not, expand the search."]},
+    {id:"c10",title:"Lead Quality Validation",tag:"Validation",tagBg:"#dcfce7",tagColor:"#15803d",tasks:["Manually scan 20 random rows per list","First names clean? (no 'N/A', no company names)","Remove info@, hello@, contact@, support@ addresses","Google 3–5 companies — look like real businesses?","Each final list: 700–2,000 clean emails ✓"]},
+    {id:"c11",title:"Lead Totals Check",tag:"Review",tagBg:"#f1f5f9",tagColor:"#475569",tasks:["Niche A — Method A: 700–2,000 emails ready ✓","Niche A — Method B: 700–2,000 emails ready ✓","Niche B — Method A: 700–2,000 emails ready ✓","Niche B — Method B: 700–2,000 emails ready ✓","All 4 CSVs clearly labeled — ready to upload ✓"]},
+  ]},
+  {id:"copy",icon:"✍️",label:"STEP 4",title:"Write Your Copy",time:"~1–2 hrs",color:"#7c3aed",badgeBg:"#ede9fe",badgeColor:"#5b21b6",cards:[
+    {id:"c12",title:"Source Winning Email Structures",tag:"Research",tagBg:"#dbeafe",tagColor:"#1d4ed8",tasks:["Find 3–5 cold emails from your inbox you actually opened","Note structure: opening, offer placement, length","Find 1 short (2–4 lines) and 1 long (8–12 lines) template","Strip their specifics — keep only the skeleton"]},
+    {id:"c13",title:"Variant A — Long Form",tag:"Copy",tagBg:"#ede9fe",tagColor:"#5b21b6",tasks:["Opening: sounds like you watched/read their content","Opening works for anyone in the niche?","ID yourself: who you are + 1 credibility point","Offer: state ONLY the outcome, not the tool or process","Social proof: 1 sentence — client, result, or claim","Guarantee: mention performance-based / no-risk angle","CTA: single low-friction ask ('Worth a 15-min call?')","Read aloud — sounds human-written to one specific person?","Remove all buzzwords (leverage, synergy, cutting-edge)","Under 150 words? Cut anything that doesn't earn its place."]},
+    {id:"c14",title:"Variant B — Short Form",tag:"Copy",tagBg:"#ede9fe",tagColor:"#5b21b6",tasks:["3–5 lines max","Open with curiosity hook: 'If I could [outcome] for [low ask]...'","1 line social proof (optional — only if it fits naturally)","End with yes/no question — easy to reply","Add 1 deliberate flaw: 'Not sure if relevant, but...'","Would a real person send this from their phone? If yes, good."]},
+    {id:"c15",title:"Subject Lines",tag:"Copy",tagBg:"#ede9fe",tagColor:"#5b21b6",tasks:["Option 1 — Personal/vague: '[niche] thing' or 'quick thought'","Option 2 — Outcome: 'more [clients/revenue] — thoughts?'","Option 3 — Curiosity: 'had an idea for [company type]'","All subject lines under 8 words?","No spam trigger words (free, guaranteed, act now)?"]},
+    {id:"c16",title:"Follow-Up Email (1 per campaign)",tag:"Copy",tagBg:"#ede9fe",tagColor:"#5b21b6",tasks:["1–3 lines only — casual nudge, not a re-pitch","References the first email naturally","Sends 1 day after initial, on same subject thread"]},
+    {id:"c17",title:"Copy Final QA",tag:"Review",tagBg:"#f1f5f9",tagColor:"#475569",tasks:["2 variants per offer/niche combo = 8 emails total ✓","4 follow-up emails (1 per campaign) ✓","Subject lines ready for all campaigns ✓","No email mentions 'AI' unless credibility boost","Every email: personalization + offer + CTA","Would YOU reply to every email?"]},
+  ]},
+  {id:"launch",icon:"🚀",label:"STEP 5",title:"Set Up & Launch",time:"~1 hr",color:"#2563eb",badgeBg:"#dbeafe",badgeColor:"#1e40af",cards:[
+    {id:"c18",title:"Platform Setup",tag:"Setup",tagBg:"#cffafe",tagColor:"#0e7490",tasks:["Log in to Instantly (or Smartlead, etc.)","20–30 pre-warmed mailboxes available?","All domains warmed for 2+ weeks?","Create 8 blank campaigns — name: '[Niche] – [Offer] – [Source]'"]},
+    {id:"c19",title:"Build Campaign Sequences",tag:"Setup",tagBg:"#cffafe",tagColor:"#0e7490",tasks:["Paste Variant A as Email 1 (Cmd+Shift+V — no formatting)","Add Variant B as Email 1 A/B variant (50/50 split)","Add Follow-Up as Email 2 → delay: 1 day","Click 'Clean HTML' on EVERY email","Repeat for all 8 campaigns","Save all — nothing left in draft state"]},
+    {id:"c20",title:"Upload Leads",tag:"Setup",tagBg:"#cffafe",tagColor:"#0e7490",tasks:["Leads → Upload CSV → select correct file","Map: email, first name, last name columns","Preview — names clean? No N/A or numbers in name fields?","Imported count matches expected count?","Repeat for all 8 campaigns — each has its OWN unique list"]},
+    {id:"c21",title:"Mailboxes & Schedule",tag:"Setup",tagBg:"#cffafe",tagColor:"#0e7490",tasks:["Assign 10 sending mailboxes per campaign","Different mailboxes per campaign (segregate deliverability)","Send limit: 30–50 emails/mailbox/day","Schedule: Mon–Sat, 7am–7pm target timezone","Email type: Text Only (no HTML, no tracking pixels)"]},
+    {id:"c22",title:"Pre-Launch QA",tag:"Review",tagBg:"#f1f5f9",tagColor:"#475569",tasks:["Preview each campaign — [first name] populates correctly?","[Sending account first name] populates correctly?","Send test email to yourself — lands in inbox (not spam)?","Subject lines: no spam words, under 8 words","All 8 campaigns reviewed and saved ✓"]},
+    {id:"c23",title:"Go Live 🚀",tag:"Launch",tagBg:"#dcfce7",tagColor:"#15803d",tasks:["Activate all 8 campaigns","Note launch timestamp","Don't check results for 24 hours — let volume build","Install mobile app → enable push notifications"]},
+  ]},
+  {id:"replies",icon:"💬",label:"STEP 6",title:"Reply & Book",time:"Ongoing",color:"#db2777",badgeBg:"#fce7f3",badgeColor:"#9d174d",cards:[
+    {id:"c24",title:"Build 4 Reply Macros",tag:"Setup",tagBg:"#cffafe",tagColor:"#0e7490",tasks:["Macro 1 — Positive: offer 2 times + cal link","Macro 2 — Positive + Questions: answer then close for meeting","Macro 3 — Polite No: ask for LinkedIn connect","Macro 4 — Follow Later: confirm date, LinkedIn offer","Test all macros — [name] variables populate?"]},
+    {id:"c25",title:"The Booking Funnel",tag:"Action",tagBg:"#fce7f3",tagColor:"#9d174d",tasks:["Positive reply → respond within 10 minutes","Use Macro 1 — 2 times + your cal link + their cal option","They give a time → send calendar invite immediately","They send calendar → book earliest slot that works","Booked → confirm reply + add prep note to your calendar"]},
+    {id:"c26",title:"Reply Type Playbook",tag:"Action",tagBg:"#fce7f3",tagColor:"#9d174d",tasks:["'How did you get my email?' → explain, don't apologize","'Tell me more' → Macro 2, answer briefly, close for call","'What does it cost?' → don't give price, book a call instead","'Send case studies' → 1–2 results then ask for call","Hard no / unsubscribe → click unsub, no reply needed","Polite no → Macro 3, LinkedIn connect, nurture later","Never rewrite campaign from <10 negative replies"]},
+    {id:"c27",title:"Daily Tracking",tag:"Review",tagBg:"#f1f5f9",tagColor:"#475569",tasks:["Log: total replies, positive replies, meetings booked/campaign","Track reply % and positive reply % separately","Replying to 100% of positives same day?","Day 3: at least 1 meeting booked? If not → Step 7 now"]},
+  ]},
+  {id:"scale",icon:"📈",label:"STEP 7",title:"Cut & Scale",time:"Weekly",color:"#0891b2",badgeBg:"#cffafe",badgeColor:"#0e7490",cards:[
+    {id:"c28",title:"48–72 Hour Review",tag:"Review",tagBg:"#f1f5f9",tagColor:"#475569",tasks:["Pull reply rates for all 8 campaigns","Sort from highest to lowest","Flag <1% reply rate as 'underperforming'","Flag >3% reply rate as 'winner'","High replies + 0% positive = hook works, offer doesn't"]},
+    {id:"c29",title:"Diagnose & Fix Underperformers",tag:"Action",tagBg:"#fce7f3",tagColor:"#9d174d",tasks:["Pause campaigns <1% (don't delete)","Copy problem? → Rewrite opening line + subject only","Offer problem? → Swap to a different offer from Step 2","Lead quality? → Swap scraping method or tighten filters","Re-test with 200–300 fresh leads before scaling again"]},
+    {id:"c30",title:"Scale Winners",tag:"Action",tagBg:"#fce7f3",tagColor:"#9d174d",tasks:["Campaigns >3%: upload 500–1,000 more leads","Add 5 more mailboxes to winning campaigns","Clone winner → test new copy variant (same offer)","Clone winner → test new audience segment (same niche)"]},
+    {id:"c31",title:"Weekly Benchmarks",tag:"Milestones",tagBg:"#fef9c3",tagColor:"#854d0e",tasks:["Week 1: 2%+ average reply rate","Week 2: 3%+ after cutting non-performers","Week 4: 4–5%+ on best campaigns","Month 1: 1 paying client or 10+ qualified meetings","Ongoing: cost per meeting → $3–$5 target","Cost $50+? Niche or offer is wrong → back to Step 1"]},
+  ]},
+];
+
+// ─── STORAGE ─────────────────────────────────────────────────────────────────
+const SK = 'ai_board_v2';
+function load() {
+  try { const r = localStorage.getItem(SK); if (r) return JSON.parse(r); } catch(e) {}
+  return { board: JSON.parse(JSON.stringify(DEFAULT_BOARD)), checked:{}, openCards:{}, statuses:{} };
+}
+let S = load();
+// Ensure board always exists (migrate from older saves)
+if (!S.board) { S.board = JSON.parse(JSON.stringify(DEFAULT_BOARD)); }
+
+let toastTimer;
+function save() {
+  try { localStorage.setItem(SK, JSON.stringify({board:S.board,checked:S.checked,openCards:S.openCards,statuses:S.statuses})); } catch(e) {}
+  const t = document.getElementById('saveToast');
+  if (!t) return;
+  clearTimeout(toastTimer);
+  t.classList.add('show');
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+// ─── UI STATE ─────────────────────────────────────────────────────────────────
+let editMode = false;
+let openDrop = null;
+let editingTask = null;   // {cardId, idx}
+let editingCard = null;   // cardId
+let editingCol = null;    // colId
+let addingTaskTo = null;  // cardId
+let addingCardTo = null;  // colId
+let newCardTitle = '';
+let newTaskText = {};     // cardId → string
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const STATUSES = [
+  {key:'not_started',label:'Not started',color:'#9b9a97'},
+  {key:'in_progress',label:'In progress',color:'#2563eb'},
+  {key:'done',label:'Done',color:'#16a34a'},
+];
+function uid() { return 'id_' + Math.random().toString(36).slice(2,9); }
+function x(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function cProg(card) {
+  const d = card.tasks.filter((_,i)=>S.checked[card.id+'-'+i]).length;
+  return {d, t:card.tasks.length, pct:card.tasks.length?Math.round(d/card.tasks.length*100):0};
+}
+function colProg(col) {
+  let d=0,t=0; col.cards.forEach(c=>{const p=cProg(c);d+=p.d;t+=p.t;});
+  return {d,t,pct:t?Math.round(d/t*100):0};
+}
+function gProg() {
+  let d=0,t=0; S.board.forEach(col=>{const p=colProg(col);d+=p.d;t+=p.t;});
+  return {d,t,pct:t?Math.round(d/t*100):0};
+}
+function findCard(cardId) {
+  for (const col of S.board) { const c = col.cards.find(c=>c.id===cardId); if (c) return {col,card:c}; }
+  return null;
+}
+
+// ─── ACTIONS ─────────────────────────────────────────────────────────────────
+function toggleTask(cardId, idx) { const k=cardId+'-'+idx; S.checked[k]=!S.checked[k]; save(); render(); }
+function toggleCard(id) { S.openCards[id]=!S.openCards[id]; save(); render(); }
+function setStatus(colId, key) { S.statuses[colId]=key; openDrop=null; save(); render(); }
+function toggleDrop(id) { openDrop=openDrop===id?null:id; render(); }
+function toggleEditMode() { editMode=!editMode; editingTask=null; editingCard=null; editingCol=null; addingTaskTo=null; addingCardTo=null; render(); }
+
+// Task editing
+function startEditTask(cardId, idx) { if (!editMode) return; editingTask={cardId,idx}; render(); setTimeout(()=>{ const el=document.getElementById('task-input-'+cardId+'-'+idx); if(el){el.focus();el.select();} },20); }
+function saveTaskEdit(cardId, idx) {
+  const el = document.getElementById('task-input-'+cardId+'-'+idx);
+  if (!el) return;
+  const val = el.value.trim();
+  if (val) { const r=findCard(cardId); if(r) r.card.tasks[idx]=val; save(); }
+  editingTask=null; render();
+}
+function deleteTask(cardId, idx) {
+  const r=findCard(cardId); if(!r) return;
+  // Remove the task and remap checked state
+  const oldChecked = {};
+  r.card.tasks.forEach((_,i)=>{ if(S.checked[cardId+'-'+i]) oldChecked[i]=true; });
+  r.card.tasks.splice(idx,1);
+  const newChecked = {};
+  r.card.tasks.forEach((_,i)=>{ const old = i<idx?i:i+1; if(oldChecked[old]) newChecked[cardId+'-'+i]=true; });
+  // Clear old keys for this card
+  Object.keys(S.checked).filter(k=>k.startsWith(cardId+'-')).forEach(k=>delete S.checked[k]);
+  Object.assign(S.checked, newChecked);
+  save(); render();
+}
+function moveTaskUp(cardId, idx) {
+  if (idx===0) return;
+  const r=findCard(cardId); if(!r) return;
+  const tasks=r.card.tasks;
+  [tasks[idx-1],tasks[idx]]=[tasks[idx],tasks[idx-1]];
+  const ka=cardId+'-'+(idx-1), kb=cardId+'-'+idx;
+  const va=S.checked[ka], vb=S.checked[kb];
+  if(vb) S.checked[ka]=true; else delete S.checked[ka];
+  if(va) S.checked[kb]=true; else delete S.checked[kb];
+  save(); render();
+}
+function moveTaskDown(cardId, idx) {
+  const r=findCard(cardId); if(!r) return;
+  if (idx>=r.card.tasks.length-1) return;
+  const tasks=r.card.tasks;
+  [tasks[idx],tasks[idx+1]]=[tasks[idx+1],tasks[idx]];
+  const ka=cardId+'-'+idx, kb=cardId+'-'+(idx+1);
+  const va=S.checked[ka], vb=S.checked[kb];
+  if(vb) S.checked[ka]=true; else delete S.checked[ka];
+  if(va) S.checked[kb]=true; else delete S.checked[kb];
+  save(); render();
+}
+
+// Add task
+function showAddTask(cardId) { addingTaskTo=cardId; newTaskText[cardId]=''; render(); setTimeout(()=>{ const el=document.getElementById('new-task-input-'+cardId); if(el){el.focus();} },20); }
+function confirmAddTask(cardId) {
+  const el=document.getElementById('new-task-input-'+cardId);
+  const val=(el?el.value:newTaskText[cardId]||'').trim();
+  if (val) { const r=findCard(cardId); if(r) r.card.tasks.push(val); save(); }
+  addingTaskTo=null; render();
+}
+function cancelAddTask() { addingTaskTo=null; render(); }
+
+// Card editing
+function startEditCard(cardId) { if(!editMode) return; editingCard=cardId; render(); setTimeout(()=>{ const el=document.getElementById('card-title-input-'+cardId); if(el){el.focus();el.select();} },20); }
+function saveCardEdit(cardId) {
+  const el=document.getElementById('card-title-input-'+cardId);
+  if(!el) return;
+  const val=el.value.trim();
+  if(val){ const r=findCard(cardId); if(r) r.card.title=val; save(); }
+  editingCard=null; render();
+}
+function deleteCard(cardId) {
+  if(!confirm('Delete this card and all its tasks?')) return;
+  for(const col of S.board){ const i=col.cards.findIndex(c=>c.id===cardId); if(i>-1){col.cards.splice(i,1);break;} }
+  Object.keys(S.checked).filter(k=>k.startsWith(cardId+'-')).forEach(k=>delete S.checked[k]);
+  delete S.openCards[cardId];
+  save(); render();
+}
+
+// Add card
+function showAddCard(colId) { addingCardTo=colId; newCardTitle=''; render(); setTimeout(()=>{ const el=document.getElementById('new-card-input-'+colId); if(el){el.focus();} },20); }
+function confirmAddCard(colId) {
+  const el=document.getElementById('new-card-input-'+colId);
+  const val=(el?el.value:'').trim();
+  if(val){
+    const col=S.board.find(c=>c.id===colId);
+    if(col){ const id=uid(); col.cards.push({id,title:val,tag:col.cards[0]?.tag||'Task',tagBg:col.cards[0]?.tagBg||'#f1f5f9',tagColor:col.cards[0]?.tagColor||'#475569',tasks:[]}); S.openCards[id]=true; }
+    save();
+  }
+  addingCardTo=null; render();
+}
+function cancelAddCard() { addingCardTo=null; render(); }
+
+// Col editing
+function startEditCol(colId) { if(!editMode) return; editingCol=colId; render(); setTimeout(()=>{ const el=document.getElementById('col-name-input-'+colId); if(el){el.focus();el.select();} },20); }
+function saveColEdit(colId) {
+  const el=document.getElementById('col-name-input-'+colId);
+  if(!el) return;
+  const val=el.value.trim();
+  if(val){ const col=S.board.find(c=>c.id===colId); if(col) col.title=val; save(); }
+  editingCol=null; render();
+}
+
+function resetAll() {
+  if(!confirm('Reset ALL progress and edits? This restores the original content.')) return;
+  S = { board: JSON.parse(JSON.stringify(DEFAULT_BOARD)), checked:{}, openCards:{}, statuses:{} };
+  localStorage.removeItem(SK);
+  editMode=false; render();
+}
+
+document.addEventListener('click', e => {
+  if(!e.target.closest('.status-wrap') && openDrop){ openDrop=null; render(); }
+});
+document.addEventListener('keydown', e => {
+  if(e.key==='Escape'){ editingTask=null; editingCard=null; editingCol=null; addingTaskTo=null; addingCardTo=null; render(); }
+});
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  const gp = gProg();
+  let h = `
+  <div class="topnav">
+    <div class="breadcrumb">
+      <span class="crumb">🏠 Home</span><span class="sep">›</span>
+      <span class="crumb">Workspace</span><span class="sep">›</span>
+      <span class="current">Sell an AI Service From Scratch</span>
+    </div>
+    <div class="nav-right">
+      <div class="nav-progress-track"><div class="nav-progress-fill" style="width:${gp.pct}%"></div></div>
+      <span class="nav-pct">${gp.pct}%</span>
+      <span class="nav-tasks">${gp.d}/${gp.t} tasks</span>
+      <button class="edit-mode-btn ${editMode?'active':''}" onclick="toggleEditMode()">
+        ${editMode?'✓ Done editing':'✏️ Edit'}
+      </button>
+      <button class="reset-btn" onclick="resetAll()">Reset</button>
+    </div>
+  </div>
+  ${editMode?`<div class="edit-banner">✏️ <b>Edit mode on</b> — click any task, card title, or column name to edit. Use + buttons to add items. Use arrows to reorder tasks.</div>`:''}
+  <div class="page-header">
+    <span class="page-emoji">📋</span>
+    <div class="page-title">Sell an AI Service From Scratch</div>
+    <div class="page-subtitle">Cold outreach execution board · Based on "I Tried to Sell a New AI Service in 3 Hours (RAW RESULTS)"</div>
+    <div class="props">
+      <div class="prop"><span>📋</span><span class="prop-label">Type</span><span class="prop-sep">·</span><span class="prop-value">Board</span></div>
+      <div class="prop"><span>✅</span><span class="prop-label">Tasks</span><span class="prop-sep">·</span><span class="prop-value">${gp.d}/${gp.t} done</span></div>
+      <div class="prop"><span>⏱</span><span class="prop-label">Est. time</span><span class="prop-sep">·</span><span class="prop-value">~6–8 hrs</span></div>
+      <div class="prop"><span>🎯</span><span class="prop-label">Target</span><span class="prop-sep">·</span><span class="prop-value">20 meetings in 60 days</span></div>
+    </div>
+  </div>
+  <div class="page-divider"></div>
+  <div class="view-tabs">
+    <div class="tab active">⊞&nbsp; Board view</div>
+    <div class="tab">+ Add a view</div>
+  </div>
+  <div class="board-wrap">`;
+
+  S.board.forEach(col => {
+    const cp = colProg(col);
+    const sk = S.statuses[col.id]||'not_started';
+    const st = STATUSES.find(s=>s.key===sk);
+    const dd = openDrop===col.id;
+    const isEditingCol = editingCol===col.id;
+
+    h += `<div class="col"><div class="col-head">
+      <div class="col-title-row">
+        <span class="col-emoji">${col.icon}</span>
+        ${isEditingCol
+          ? `<input class="col-name-input" id="col-name-input-${col.id}" value="${x(col.title)}" onblur="saveColEdit('${col.id}')" onkeydown="if(event.key==='Enter')saveColEdit('${col.id}')" onclick="event.stopPropagation()"/>`
+          : `<span class="col-name" style="${editMode?'cursor:pointer;border-bottom:1px dashed #d3d1cb':''}" onclick="${editMode?`startEditCol('${col.id}')`:''}">${x(col.title)}</span>`
+        }
+        <span class="col-count">${cp.d}/${cp.t}</span>
+      </div>
+      <div class="col-meta">
+        <span class="step-badge" style="background:${col.badgeBg};color:${col.badgeColor}">${col.label}</span>
+        <span class="col-time">${col.time}</span>
+        <div class="status-wrap">
+          <button class="status-btn" onclick="event.stopPropagation();toggleDrop('${col.id}')">
+            <span class="status-dot" style="background:${st.color}"></span>${x(st.label)}<span class="status-caret">▾</span>
+          </button>
+          ${dd?`<div class="status-dropdown">${STATUSES.map(o=>`
+            <div class="status-opt" onclick="setStatus('${col.id}','${o.key}')">
+              <span class="status-dot" style="background:${o.color}"></span>${x(o.label)}
+              ${sk===o.key?'<span class="status-opt-check">✓</span>':''}
+            </div>`).join('')}</div>`:''}
+        </div>
+      </div>
+      <div class="col-progress-track"><div class="col-progress-fill" style="width:${cp.pct}%;background:${col.color}"></div></div>
+    </div><div class="cards">`;
+
+    col.cards.forEach(card => {
+      const p = cProg(card);
+      const open = !!S.openCards[card.id];
+      const allDone = p.d===p.t;
+      const isEditingCard = editingCard===card.id;
+
+      h += `<div class="card">
+        <div class="card-head" onclick="${isEditingCard?'':'toggleCard(\''+card.id+'\')'}">
+          <div class="card-checkbox ${allDone?'done':''}" onclick="event.stopPropagation()"></div>
+          <div class="card-body" style="cursor:${editMode&&!isEditingCard?'text':'pointer'}">
+            ${isEditingCard
+              ? `<input class="card-title-input" id="card-title-input-${card.id}" value="${x(card.title)}" onblur="saveCardEdit('${card.id}')" onkeydown="if(event.key==='Enter')saveCardEdit('${card.id}')" onclick="event.stopPropagation()"/>`
+              : `<div class="card-title-text ${allDone?'done':''}" onclick="${editMode?`event.stopPropagation();startEditCard('${card.id}')`:''}" style="${editMode?'cursor:text':''}">${x(card.title)}</div>`
+            }
+            <div class="card-footer">
+              <span class="tag" style="background:${card.tagBg};color:${card.tagColor}">${x(card.tag)}</span>
+              <div class="mini-track"><div class="mini-fill" style="width:${p.pct}%;background:${col.color}"></div></div>
+              <span class="task-counter">${p.d}/${p.t}</span>
+            </div>
+          </div>
+          <span class="card-toggle ${open?'open':''}">▲</span>
+        </div>`;
+
+      if (editMode) {
+        h += `<div class="card-edit-bar edit-mode" style="display:flex">
+          <button class="card-del-btn" onclick="deleteCard('${card.id}')">🗑 Delete card</button>
+        </div>`;
+      }
+
+      if (open) {
+        h += `<div class="task-list">`;
+        card.tasks.forEach((task, i) => {
+          const done = !!S.checked[card.id+'-'+i];
+          const isEditingThisTask = editingTask && editingTask.cardId===card.id && editingTask.idx===i;
+
+          h += `<div class="task-row${isEditingThisTask?' editing':''}">
+            <div class="task-cb ${done?'done':''}" onclick="${editMode?'':'toggleTask(\''+card.id+'\','+i+')'}"></div>`;
+
+          if (isEditingThisTask) {
+            h += `<input class="task-input" id="task-input-${card.id}-${i}"
+              value="${x(task)}"
+              onblur="saveTaskEdit('${card.id}',${i})"
+              onkeydown="if(event.key==='Enter')saveTaskEdit('${card.id}',${i});if(event.key==='Escape'){editingTask=null;render();}"
+              onclick="event.stopPropagation()"/>`;
+          } else {
+            h += `<span class="task-label ${done?'done':''}" onclick="${editMode?`startEditTask('${card.id}',${i})`:`toggleTask('${card.id}',${i})`}">${x(task)}</span>`;
+          }
+
+          if (editMode && !isEditingThisTask) {
+            h += `<div class="task-edit-actions">
+              <button class="icon-btn" title="Move up" onclick="moveTaskUp('${card.id}',${i})">↑</button>
+              <button class="icon-btn" title="Move down" onclick="moveTaskDown('${card.id}',${i})">↓</button>
+              <button class="icon-btn del" title="Delete" onclick="deleteTask('${card.id}',${i})">✕</button>
+            </div>`;
+          }
+
+          h += `</div>`;
+        });
+
+        // Add task row
+        if (editMode) {
+          if (addingTaskTo===card.id) {
+            h += `<div class="add-task-input-row">
+              <div class="task-cb"></div>
+              <input class="add-task-input" id="new-task-input-${card.id}" placeholder="New task..." 
+                onkeydown="if(event.key==='Enter')confirmAddTask('${card.id}');if(event.key==='Escape')cancelAddTask()"/>
+              <button class="add-task-confirm" onclick="confirmAddTask('${card.id}')">Add</button>
+              <button class="add-task-cancel" onclick="cancelAddTask()">✕</button>
+            </div>`;
+          } else {
+            h += `<div class="add-task-row" onclick="showAddTask('${card.id}')">
+              <span style="font-size:13px;color:#d3d1cb">+</span> Add task
+            </div>`;
+          }
+        }
+
+        h += `</div>`;
+      }
+      h += `</div>`;
+    });
+
+    // Add card
+    if (editMode) {
+      if (addingCardTo===col.id) {
+        h += `<div class="add-card-form">
+          <input id="new-card-input-${col.id}" placeholder="Card title..." 
+            onkeydown="if(event.key==='Enter')confirmAddCard('${col.id}');if(event.key==='Escape')cancelAddCard()"/>
+          <div class="add-card-actions">
+            <button class="btn-primary" onclick="confirmAddCard('${col.id}')">Add card</button>
+            <button class="btn-ghost" onclick="cancelAddCard()">Cancel</button>
+          </div>
+        </div>`;
+      } else {
+        h += `<div class="add-card-row" onclick="showAddCard('${col.id}')"><span>+</span> New card</div>`;
+      }
+    } else {
+      h += `<div class="add-card-row" style="pointer-events:none;opacity:.4"><span>+</span> New</div>`;
+    }
+
+    h += `</div></div>`;
+  });
+
+  h += `<div class="add-group" style="opacity:.4;pointer-events:none"><span>+</span> Add a group</div></div>`;
+  document.getElementById('app').innerHTML = h;
+}
+
+// Expose to global
+['toggleTask','toggleCard','setStatus','toggleDrop','toggleEditMode','resetAll',
+ 'startEditTask','saveTaskEdit','deleteTask','moveTaskUp','moveTaskDown',
+ 'showAddTask','confirmAddTask','cancelAddTask',
+ 'startEditCard','saveCardEdit','deleteCard',
+ 'showAddCard','confirmAddCard','cancelAddCard',
+ 'startEditCol','saveColEdit'
+].forEach(fn => window[fn] = eval(fn));
+
+render();
+</script>
+</body>
+</html>

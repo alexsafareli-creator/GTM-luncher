@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sell an AI Service From Scratch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Lato', sans-serif; background: #fff; color: #37352f; min-height: 100vh; }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { height: 6px; width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d3d1cb; border-radius: 3px; }
+
+  /* Top nav */
+  .topnav {
+    height: 45px; border-bottom: 1px solid #e9e9e7;
+    display: flex; align-items: center; padding: 0 20px;
+    gap: 6px; background: #fff; position: sticky; top: 0; z-index: 100;
+  }
+  .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #9b9a97; }
+  .breadcrumb span { cursor: pointer; }
+  .breadcrumb span:hover { color: #37352f; }
+  .breadcrumb .sep { color: #d3d1cb; font-size: 11px; }
+  .breadcrumb .current { color: #37352f; font-weight: 600; }
+  .nav-progress-wrap { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .nav-progress-bar { width: 140px; height: 4px; background: #e9e9e7; border-radius: 2px; overflow: hidden; }
+  .nav-progress-fill { height: 100%; background: #37352f; border-radius: 2px; transition: width 0.4s; }
+  .nav-pct { font-size: 12px; color: #9b9a97; font-weight: 700; min-width: 32px; }
+
+  /* Page header */
+  .page-header { padding: 36px 40px 0; }
+  .page-emoji { font-size: 48px; margin-bottom: 10px; display: block; }
+  .page-title { font-size: 36px; font-weight: 900; color: #37352f; letter-spacing: -0.5px; line-height: 1.2; margin-bottom: 6px; }
+  .page-subtitle { font-size: 13px; color: #9b9a97; margin-bottom: 18px; }
+  .props { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin-bottom: 20px; }
+  .prop { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 4px; font-size: 12px; color: #9b9a97; cursor: default; }
+  .prop:hover { background: #f7f7f5; }
+  .prop-icon { font-size: 13px; }
+  .prop-label { color: #9b9a97; }
+  .prop-value { color: #37352f; font-weight: 600; }
+  .divider { height: 1px; background: #e9e9e7; margin: 0 40px; }
+
+  /* View tabs */
+  .view-tabs { padding: 10px 40px 0; display: flex; align-items: center; gap: 2px; }
+  .tab { display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 4px; font-size: 13px; color: #9b9a97; cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab.active { color: #37352f; font-weight: 600; border-bottom-color: #37352f; border-radius: 4px 4px 0 0; }
+  .tab:hover:not(.active) { background: #f7f7f5; }
+
+  /* Board */
+  .board-wrap { overflow-x: auto; padding: 16px 40px 40px; display: flex; gap: 12px; align-items: flex-start; min-height: calc(100vh - 240px); }
+
+  /* Column */
+  .col { width: 264px; flex-shrink: 0; }
+  .col-head { padding: 0 0 10px; }
+  .col-title-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .col-icon { font-size: 14px; }
+  .col-name { font-size: 13px; font-weight: 700; color: #37352f; flex: 1; }
+  .col-count { font-size: 12px; color: #9b9a97; }
+  .step-badge { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 3px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .col-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .col-time { font-size: 11px; color: #9b9a97; }
+  .status-btn { display: flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; border: 1px solid #e9e9e7; background: #fff; cursor: pointer; font-size: 11px; font-family: 'Lato', sans-serif; color: #37352f; position: relative; transition: background 0.1s; }
+  .status-btn:hover { background: #f7f7f5; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .status-dropdown { position: absolute; top: 110%; left: 0; background: #fff; border: 1px solid #e9e9e7; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); z-index: 200; min-width: 140px; padding: 4px; }
+  .status-opt { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; color: #37352f; }
+  .status-opt:hover { background: #f7f7f5; }
+  .col-progress { height: 3px; background: #e9e9e7; border-radius: 2px; overflow: hidden; }
+  .col-progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+
+  /* Cards */
+  .cards { padding-top: 8px; }
+  .card {
+    background: #fff; border: 1px solid #e9e9e7; border-radius: 6px;
+    margin-bottom: 6px; overflow: hidden; cursor: pointer;
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  .card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-color: #d3d1cb; }
+  .card-head { padding: 10px 12px; display: flex; align-items: flex-start; gap: 8px; }
+  .card-cb { width: 16px; height: 16px; border-radius: 3px; border: 1.5px solid #d3d1cb; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; cursor: pointer; }
+  .card-cb.done { background: #37352f; border-color: #37352f; }
+  .card-cb.done::after { content: '✓'; color: #fff; font-size: 9px; font-weight: 900; }
+  .card-body { flex: 1; }
+  .card-title { font-size: 13px; color: #37352f; font-weight: 600; line-height: 1.4; }
+  .card-title.done { color: #9b9a97; text-decoration: line-through; }
+  .card-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .tag { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 3px; letter-spacing: 0.3px; text-transform: uppercase; }
+  .card-mini-progress { flex: 1; height: 3px; background: #e9e9e7; border-radius: 2px; overflow: hidden; max-width: 80px; }
+  .card-mini-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+  .card-task-count { font-size: 11px; color: #9b9a97; }
+  .card-arrow { color: #9b9a97; font-size: 10px; flex-shrink: 0; margin-top: 2px; transition: transform 0.2s; }
+  .card-arrow.open { transform: rotate(180deg); }
+
+  /* Task list */
+  .task-list { border-top: 1px solid #f1f1ef; padding: 6px 10px 8px; }
+  .task-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 6px; border-radius: 3px; cursor: pointer; transition: background 0.1s; }
+  .task-item:hover { background: #f7f7f5; }
+  .task-cb { width: 14px; height: 14px; border-radius: 2px; border: 1.5px solid #d3d1cb; flex-shrink: 0; margin-top: 2px; display: flex; align-items: center; justify-content: center; transition: all 0.12s; }
+  .task-cb.done { background: #37352f; border-color: #37352f; }
+  .task-cb.done::after { content: '✓'; color: #fff; font-size: 8px; font-weight: 900; }
+  .task-text { font-size: 12px; color: #37352f; line-height: 1.55; }
+  .task-text.done { color: #9b9a97; text-decoration: line-through; text-decoration-color: #c5c5c0; }
+
+  /* Add new */
+  .add-new { display: flex; align-items: center; gap: 5px; padding: 5px 6px; border-radius: 4px; font-size: 13px; color: #9b9a97; cursor: pointer; transition: background 0.1s; margin-top: 4px; }
+  .add-new:hover { background: #f7f7f5; color: #37352f; }
+  .add-group { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px; font-size: 13px; color: #9b9a97; cursor: pointer; transition: background 0.1s; white-space: nowrap; margin-top: 2px; flex-shrink: 0; align-self: flex-start; }
+  .add-group:hover { background: #f7f7f5; color: #37352f; }
+</style>
+</head>
+<body>
+
+<script>
+const BOARD_DATA = [
+  {
+    id:"niche", icon:"🎯", label:"STEP 1", title:"Pick Your Niches", time:"~20 min",
+    color:"#16a34a", light:"#f0fdf4", badge:"#dcfce7", badgeText:"#15803d",
+    cards:[
+      { id:"c1", title:"Niche Criteria Checklist", tag:"Validation", tagBg:"#dcfce7", tagText:"#15803d",
+        tasks:["100% digital business? (agency, SaaS, e-com, coaching — NOT brick & mortar)","Single sale/client generates $5,000+ for them?","US or low-compliance market?","No heavy compliance (no healthcare, legal, EU-GDPR)?","Can reach decision makers by email or LinkedIn?","10,000+ companies exist in this niche?"]},
+      { id:"c2", title:"Select & Validate Niche A", tag:"Research", tagBg:"#dbeafe", tagText:"#1d4ed8",
+        tasks:["Write down Niche A (e.g. 'PPC agencies')","Google '[niche] average client value' — confirm $5k+","LinkedIn search: confirm 10,000+ people in this niche","Niche A passes ALL 6 criteria ✓"]},
+      { id:"c3", title:"Select & Validate Niche B", tag:"Research", tagBg:"#dbeafe", tagText:"#1d4ed8",
+        tasks:["Write down Niche B (e.g. 'online coaches')","Google '[niche] average program price' — confirm $5k+","Check school.com or LinkedIn — large active pool confirmed","Niche B passes ALL 6 criteria ✓","Niches A & B are different enough to test separately"]},
+    ]
+  },
+  {
+    id:"offers", icon:"💡", label:"STEP 2", title:"Build Your Offers", time:"~45 min",
+    color:"#ca8a04", light:"#fefce8", badge:"#fef9c3", badgeText:"#854d0e",
+    cards:[
+      { id:"c4", title:"Find Real Problems on Reddit", tag:"Research", tagBg:"#dbeafe", tagText:"#1d4ed8",
+        tasks:["Create free account at gummysearch.com","New Audience → type Niche A → auto-find subreddits","Review & adjust subreddit list → Create Audience","Search 'I hate' → sort by upvotes → read top 10 posts","Search title '?' → sort upvotes → read top 10 posts","Write down 2–3 recurring emotional problems for Niche A","Repeat full process for Niche B"]},
+      { id:"c5", title:"Validate Each Problem", tag:"Validation", tagBg:"#dcfce7", tagText:"#15803d",
+        tasks:["Problem mentioned by multiple different people?","Solving it = direct revenue gain or time saved?","Could AI/automation plausibly solve this?","Is this felt by the DECISION MAKER, not just an employee?"]},
+      { id:"c6", title:"Build AI Solutions", tag:"Build", tagBg:"#fef9c3", tagText:"#854d0e",
+        tasks:["Write each problem in one sentence (plain language)","Write a plausible AI-powered solution for each","Each solution has a tangible deliverable?","Could you deliver a basic version within 72 hours?","2 solutions per niche = 4 solutions total ✓"]},
+      { id:"c7", title:"Write Time-Bound Guarantees", tag:"Build", tagBg:"#fef9c3", tagText:"#854d0e",
+        tasks:["Formula: 'I will deliver [X] in [Y days] or [Z consequence]'","Promise is specific and measurable (not vague)","Consequence is strong: refund or work for free","Guarantee lowers risk to ZERO for the prospect","YOU would take this offer if pitched to you","4 offers total (2 per niche), each with a guarantee ✓"]},
+    ]
+  },
+  {
+    id:"leads", icon:"🔍", label:"STEP 3", title:"Scrape Your Leads", time:"~2–3 hrs",
+    color:"#ea580c", light:"#fff7ed", badge:"#ffedd5", badgeText:"#9a3412",
+    cards:[
+      { id:"c8", title:"Method A: Airscale + AnyMailFinder", tag:"Scraping", tagBg:"#ffedd5", tagText:"#9a3412",
+        tasks:["airscale.io → Find Companies → keyword + United States","Size 1–10 → Load 1,000 → export '[Niche]-Airscale-1to10'","Size 11–200 → export '[Niche]-Airscale-11to200'","Combine both CSVs in Google Sheets + add 'size' column","Scan 20 rows manually — 80%+ look correct?","Airscale: Find Domain with Google → run on all rows","anymailfinder.com → New Bulk → Decision Maker Search","Upload CSV → map Company Name + Domain → enrich","Download → label '[Niche]-Airscale-Emails'","40%+ of rows have an email? If not, add more rows."]},
+      { id:"c9", title:"Method B: Sales Nav + Vain.io", tag:"Scraping", tagBg:"#ffedd5", tagText:"#9a3412",
+        tasks:["LinkedIn Sales Nav → Job Titles: CEO, Founder, Owner, Partner","Keywords: 2–3 terms (e.g. 'performance agency', 'PPC')","Geography: United States only","Result count: 1,000–2,000. Adjust if outside range.","Open 10 random profiles — 8/10 match target buyer?","Copy the full Sales Nav URL","vain.io → New Order → paste URL → connect LinkedIn cookie","Download CSV → filter rows WITH emails → save separately","Upload remaining to anymailfinder → Person Name Search","Combine both files → label '[Niche]-SalesNav-Emails'","700+ emails in combined list? If not, expand the search."]},
+      { id:"c10", title:"Lead Quality Validation", tag:"Validation", tagBg:"#dcfce7", tagText:"#15803d",
+        tasks:["Manually scan 20 random rows per list","First names clean? (no 'N/A', no company names)","Remove info@, hello@, contact@, support@ addresses","Google 3–5 companies — look like real businesses?","Each final list: 700–2,000 clean emails ✓"]},
+      { id:"c11", title:"Lead Totals Check", tag:"Review", tagBg:"#f1f5f9", tagText:"#475569",
+        tasks:["Niche A — Method A: 700–2,000 emails ready ✓","Niche A — Method B: 700–2,000 emails ready ✓","Niche B — Method A: 700–2,000 emails ready ✓","Niche B — Method B: 700–2,000 emails ready ✓","All 4 CSVs clearly labeled — ready to upload ✓"]},
+    ]
+  },
+  {
+    id:"copy", icon:"✍️", label:"STEP 4", title:"Write Your Copy", time:"~1–2 hrs",
+    color:"#7c3aed", light:"#faf5ff", badge:"#ede9fe", badgeText:"#5b21b6",
+    cards:[
+      { id:"c12", title:"Source Winning Email Structures", tag:"Research", tagBg:"#dbeafe", tagText:"#1d4ed8",
+        tasks:["Find 3–5 cold emails from your inbox you actually opened","Note structure: opening, offer placement, length","Find 1 short (2–4 lines) and 1 long (8–12 lines) template","Strip their specifics — keep only the skeleton"]},
+      { id:"c13", title:"Variant A — Long Form", tag:"Copy", tagBg:"#ede9fe", tagText:"#5b21b6",
+        tasks:["Opening: sounds like you watched/read their content","Opening works for anyone in the niche?","ID yourself: who you are + 1 credibility point","Offer: state ONLY the outcome, not the tool or process","Social proof: 1 sentence — client, result, or claim","Guarantee: mention performance-based / no-risk angle","CTA: single low-friction ask ('Worth a 15-min call?')","Read aloud — sounds human-written to one specific person?","Remove all buzzwords (leverage, synergy, cutting-edge)","Under 150 words? Cut anything that doesn't earn its place."]},
+      { id:"c14", title:"Variant B — Short Form", tag:"Copy", tagBg:"#ede9fe", tagText:"#5b21b6",
+        tasks:["3–5 lines max","Open with curiosity hook: 'If I could [outcome] for [low ask]...'","1 line social proof (optional — only if it fits naturally)","End with yes/no question — easy to reply","Add 1 deliberate flaw: 'Not sure if relevant, but...'","Would a real person send this from their phone? If yes, good."]},
+      { id:"c15", title:"Subject Lines", tag:"Copy", tagBg:"#ede9fe", tagText:"#5b21b6",
+        tasks:["Option 1 — Personal/vague: '[niche] thing' or 'quick thought'","Option 2 — Outcome: 'more [clients/revenue] — thoughts?'","Option 3 — Curiosity: 'had an idea for [company type]'","All subject lines under 8 words?","No spam trigger words (free, guaranteed, act now)?"]},
+      { id:"c16", title:"Copy Final QA", tag:"Review", tagBg:"#f1f5f9", tagText:"#475569",
+        tasks:["2 variants per offer/niche combo = 8 emails total ✓","4 follow-up emails (1 per campaign) ✓","Subject lines ready for all campaigns ✓","No email pitches 'AI' unless credibility boost","Every email: personalization + offer + CTA","Would YOU reply to every email?"]},
+    ]
+  },
+  {
+    id:"launch", icon:"🚀", label:"STEP 5", title:"Set Up & Launch", time:"~1 hr",
+    color:"#2563eb", light:"#eff6ff", badge:"#dbeafe", badgeText:"#1e40af",
+    cards:[
+      { id:"c18", title:"Platform Setup", tag:"Setup", tagBg:"#cffafe", tagText:"#0e7490",
+        tasks:["Log in to Instantly (or Smartlead, etc.)","20–30 pre-warmed mailboxes available?","All domains warmed for 2+ weeks?","Create 8 blank campaigns — name: '[Niche] – [Offer] – [Source]'"]},
+      { id:"c19", title:"Build Campaign Sequences", tag:"Setup", tagBg:"#cffafe", tagText:"#0e7490",
+        tasks:["Paste Variant A as Email 1 (Cmd+Shift+V — no formatting)","Add Variant B as Email 1 A/B variant (50/50 split)","Add Follow-Up as Email 2 → delay: 1 day","Click 'Clean HTML' on EVERY email","Repeat for all 8 campaigns","Save all — nothing left in draft state"]},
+      { id:"c20", title:"Upload Leads", tag:"Setup", tagBg:"#cffafe", tagText:"#0e7490",
+        tasks:["Leads → Upload CSV → select correct file","Map: email, first name, last name columns","Preview — names clean? No N/A or numbers in name fields?","Imported count matches expected count?","Repeat for all 8 campaigns — each has its OWN unique list"]},
+      { id:"c21", title:"Mailboxes & Schedule", tag:"Setup", tagBg:"#cffafe", tagText:"#0e7490",
+        tasks:["Assign 10 sending mailboxes per campaign","Different mailboxes per campaign (segregate deliverability)","Send limit: 30–50 emails/mailbox/day","Schedule: Mon–Sat, 7am–7pm target timezone","Email type: Text Only (no HTML, no tracking pixels)"]},
+      { id:"c22", title:"Pre-Launch QA", tag:"Review", tagBg:"#f1f5f9", tagText:"#475569",
+        tasks:["Preview each campaign — [first name] populates correctly?","[Sending account first name] populates correctly?","Send test email to yourself — lands in inbox (not spam)?","Subject lines: no spam words, under 8 words","All 8 campaigns reviewed and saved ✓"]},
+      { id:"c23", title:"Go Live 🚀", tag:"Launch", tagBg:"#dcfce7", tagText:"#15803d",
+        tasks:["Activate all 8 campaigns","Note launch timestamp","Don't check results for 24 hours — let volume build","Install mobile app → enable push notifications"]},
+    ]
+  },
+  {
+    id:"replies", icon:"💬", label:"STEP 6", title:"Reply & Book", time:"Ongoing",
+    color:"#db2777", light:"#fdf2f8", badge:"#fce7f3", badgeText:"#9d174d",
+    cards:[
+      { id:"c24", title:"Build 4 Reply Macros", tag:"Setup", tagBg:"#cffafe", tagText:"#0e7490",
+        tasks:["Macro 1 — Positive: offer 2 times + cal link","Macro 2 — Positive + Questions: answer then close for meeting","Macro 3 — Polite No: ask for LinkedIn connect","Macro 4 — Follow Later: confirm date, LinkedIn offer","Test all macros — [name] variables populate?"]},
+      { id:"c25", title:"The Booking Funnel", tag:"Action", tagBg:"#fce7f3", tagText:"#9d174d",
+        tasks:["Positive reply → respond within 10 minutes","Use Macro 1 — 2 times + your cal link + their cal option","They give a time → send calendar invite immediately","They send calendar → book earliest slot that works","Booked → confirm reply + add prep note to your calendar"]},
+      { id:"c26", title:"Reply Type Playbook", tag:"Action", tagBg:"#fce7f3", tagText:"#9d174d",
+        tasks:["'How did you get my email?' → explain, don't apologize","'Tell me more' → Macro 2, answer briefly, close for call","'What does it cost?' → don't give price, book a call instead","'Send case studies' → 1–2 results then ask for call","Hard no / unsubscribe → click unsub, no reply needed","Polite no → Macro 3, LinkedIn connect, nurture later","Never rewrite campaign from <10 negative replies"]},
+      { id:"c27", title:"Daily Tracking", tag:"Review", tagBg:"#f1f5f9", tagText:"#475569",
+        tasks:["Log: total replies, positive replies, meetings booked/campaign","Track reply % and positive reply % separately","Replying to 100% of positives same day?","Day 3: at least 1 meeting booked? If not → Step 7 now"]},
+    ]
+  },
+  {
+    id:"scale", icon:"📈", label:"STEP 7", title:"Cut & Scale", time:"Weekly",
+    color:"#16a34a", light:"#f0fdf4", badge:"#dcfce7", badgeText:"#15803d",
+    cards:[
+      { id:"c28", title:"48–72 Hour Review", tag:"Review", tagBg:"#f1f5f9", tagText:"#475569",
+        tasks:["Pull reply rates for all 8 campaigns","Sort from highest to lowest","Flag <1% reply rate as 'underperforming'","Flag >3% reply rate as 'winner'","High replies + 0% positive = hook works, offer doesn't"]},
+      { id:"c29", title:"Diagnose & Fix Underperformers", tag:"Action", tagBg:"#fce7f3", tagText:"#9d174d",
+        tasks:["Pause campaigns <1% (don't delete)","Copy problem? → Rewrite opening line + subject only","Offer problem? → Swap to a different offer from Step 2","Lead quality? → Swap scraping method or tighten filters","Re-test with 200–300 fresh leads before scaling again"]},
+      { id:"c30", title:"Scale Winners", tag:"Action", tagBg:"#fce7f3", tagText:"#9d174d",
+        tasks:["Campaigns >3%: upload 500–1,000 more leads","Add 5 more mailboxes to winning campaigns","Clone winner → test new copy variant (same offer)","Clone winner → test new audience segment (same niche)"]},
+      { id:"c31", title:"Weekly Benchmarks", tag:"Milestones", tagBg:"#fef9c3", tagText:"#854d0e",
+        tasks:["Week 1: 2%+ average reply rate","Week 2: 3%+ after cutting non-performers","Week 4: 4–5%+ on best campaigns","Month 1: 1 paying client or 10+ qualified meetings","Ongoing: cost per meeting → $3–$5 target","Cost $50+? Niche or offer is wrong → back to Step 1"]},
+    ]
+  },
+];
+
+// State
+const state = {
+  checked: {},
+  openCards: {},
+  statuses: {},
+  openDropdown: null,
+};
+
+const STATUS_OPTIONS = [
+  { key: "not_started", label: "Not started", color: "#9b9a97" },
+  { key: "in_progress", label: "In progress",  color: "#2563eb" },
+  { key: "done",        label: "Done",          color: "#16a34a" },
+];
+
+function getStatus(colId) {
+  return state.statuses[colId] || "not_started";
+}
+
+function colProgress(col) {
+  const keys = col.cards.flatMap(c => c.tasks.map((_, i) => `${c.id}-${i}`));
+  const done = keys.filter(k => state.checked[k]).length;
+  return { done, total: keys.length };
+}
+
+function globalProgress() {
+  let done = 0, total = 0;
+  BOARD_DATA.forEach(col => { const p = colProgress(col); done += p.done; total += p.total; });
+  return { done, total, pct: total ? Math.round((done / total) * 100) : 0 };
+}
+
+function cardProgress(card) {
+  const done = card.tasks.filter((_, i) => state.checked[`${card.id}-${i}`]).length;
+  return { done, total: card.tasks.length, pct: card.tasks.length ? Math.round((done / card.tasks.length) * 100) : 0 };
+}
+
+function toggleTask(cardId, idx) {
+  const key = `${cardId}-${idx}`;
+  state.checked[key] = !state.checked[key];
+  render();
+}
+
+function toggleCard(cardId) {
+  state.openCards[cardId] = !state.openCards[cardId];
+  render();
+}
+
+function setStatus(colId, status) {
+  state.statuses[colId] = status;
+  state.openDropdown = null;
+  render();
+}
+
+function toggleDropdown(colId) {
+  state.openDropdown = state.openDropdown === colId ? null : colId;
+  render();
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.status-btn') && state.openDropdown) {
+    state.openDropdown = null;
+    render();
+  }
+});
+
+function render() {
+  const gp = globalProgress();
+  const totalTasks = gp.total;
+  const doneTasks = gp.done;
+
+  let html = `
+  <div class="topnav">
+    <div class="breadcrumb">
+      <span>🏠</span>
+      <span class="sep">›</span>
+      <span>Workspace</span>
+      <span class="sep">›</span>
+      <span class="current">Sell an AI Service From Scratch</span>
+    </div>
+    <div class="nav-progress-wrap">
+      <div class="nav-progress-bar"><div class="nav-progress-fill" style="width:${gp.pct}%"></div></div>
+      <span class="nav-pct">${gp.pct}%</span>
+      <span style="font-size:11px;color:#9b9a97">${doneTasks}/${totalTasks} tasks</span>
+    </div>
+  </div>
+
+  <div class="page-header">
+    <span class="page-emoji">📋</span>
+    <div class="page-title">Sell an AI Service From Scratch</div>
+    <div class="page-subtitle">Cold outreach execution board · Based on "I Tried to Sell a New AI Service in 3 Hours"</div>
+    <div class="props">
+      <div class="prop"><span class="prop-icon">📋</span><span class="prop-label">Type</span>&nbsp;<span class="prop-value">Board</span></div>
+      <div class="prop"><span class="prop-icon">✅</span><span class="prop-label">Tasks</span>&nbsp;<span class="prop-value">${doneTasks}/${totalTasks} done</span></div>
+      <div class="prop"><span class="prop-icon">⏱</span><span class="prop-label">Est. time</span>&nbsp;<span class="prop-value">~6–8 hrs</span></div>
+      <div class="prop"><span class="prop-icon">🎯</span><span class="prop-label">Target</span>&nbsp;<span class="prop-value">20 meetings in 60 days</span></div>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="view-tabs">
+    <div class="tab active">⊞ Board view</div>
+    <div class="tab" style="color:#9b9a97;font-size:12px">+ Add a view</div>
+  </div>
+
+  <div class="board-wrap">`;
+
+  BOARD_DATA.forEach(col => {
+    const prog = colProgress(col);
+    const pct = prog.total ? Math.round((prog.done / prog.total) * 100) : 0;
+    const statusKey = getStatus(col.id);
+    const status = STATUS_OPTIONS.find(s => s.key === statusKey);
+    const dropOpen = state.openDropdown === col.id;
+
+    html += `<div class="col">
+      <div class="col-head">
+        <div class="col-title-row">
+          <span class="col-icon">${col.icon}</span>
+          <span class="col-name">${col.title}</span>
+          <span class="col-count">${prog.done}/${prog.total}</span>
+        </div>
+        <div class="col-meta">
+          <span class="step-badge" style="background:${col.badge};color:${col.badgeText}">${col.label}</span>
+          <span class="col-time">${col.time}</span>
+          <div style="position:relative;margin-left:auto">
+            <button class="status-btn" onclick="event.stopPropagation();toggleDropdown('${col.id}')">
+              <span class="status-dot" style="background:${status.color}"></span>
+              ${status.label}
+              <span style="font-size:9px;color:#9b9a97">▾</span>
+            </button>
+            ${dropOpen ? `<div class="status-dropdown">
+              ${STATUS_OPTIONS.map(opt => `
+                <div class="status-opt" onclick="setStatus('${col.id}','${opt.key}')">
+                  <span class="status-dot" style="background:${opt.color}"></span>
+                  ${opt.label}
+                  ${statusKey === opt.key ? '<span style="margin-left:auto;color:#9b9a97;font-size:11px">✓</span>' : ''}
+                </div>`).join('')}
+            </div>` : ''}
+          </div>
+        </div>
+        <div class="col-progress">
+          <div class="col-progress-fill" style="width:${pct}%;background:${col.color}"></div>
+        </div>
+      </div>
+      <div class="cards">`;
+
+    col.cards.forEach(card => {
+      const cp = cardProgress(card);
+      const open = !!state.openCards[card.id];
+      const allDone = cp.done === cp.total;
+
+      html += `<div class="card">
+        <div class="card-head" onclick="toggleCard('${card.id}')">
+          <div class="card-cb ${allDone ? 'done' : ''}" onclick="event.stopPropagation()"></div>
+          <div class="card-body">
+            <div class="card-title ${allDone ? 'done' : ''}">${card.title}</div>
+            <div class="card-meta">
+              <span class="tag" style="background:${card.tagBg};color:${card.tagText}">${card.tag}</span>
+              <div class="card-mini-progress"><div class="card-mini-fill" style="width:${cp.pct}%;background:${col.color}"></div></div>
+              <span class="card-task-count">${cp.done}/${cp.total}</span>
+            </div>
+          </div>
+          <span class="card-arrow ${open ? 'open' : ''}">▲</span>
+        </div>`;
+
+      if (open) {
+        html += `<div class="task-list">`;
+        card.tasks.forEach((task, i) => {
+          const key = `${card.id}-${i}`;
+          const done = !!state.checked[key];
+          html += `<div class="task-item" onclick="toggleTask('${card.id}',${i})">
+            <div class="task-cb ${done ? 'done' : ''}"></div>
+            <span class="task-text ${done ? 'done' : ''}">${task}</span>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+
+      html += `</div>`;
+    });
+
+    html += `<div class="add-new"><span>+</span> New</div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div class="add-group"><span>+</span> Add a group</div>
+  </div>`;
+
+  document.getElementById('app').innerHTML = html;
+}
+
+window.toggleTask = toggleTask;
+window.toggleCard = toggleCard;
+window.setStatus = setStatus;
+window.toggleDropdown = toggleDropdown;
+
+render();
+</script>
+
+<div id="app"></div>
+</body>
+</html>

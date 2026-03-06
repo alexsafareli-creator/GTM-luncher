@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sell an AI Service From Scratch — Execution Board</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #090909; font-family: 'Courier New', monospace; }
+    ::-webkit-scrollbar { height: 4px; width: 4px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    const COLORS = {
+      "STEP 1": "#00FF94",
+      "STEP 2": "#FFD600",
+      "STEP 3": "#FF6B35",
+      "STEP 4": "#A78BFA",
+      "STEP 5": "#38BDF8",
+      "STEP 6": "#F472B6",
+      "STEP 7": "#00FF94",
+    };
+
+    const TAG_COLORS = {
+      Validation:  { bg: "#22c55e22", text: "#22c55e" },
+      Research:    { bg: "#3b82f622", text: "#60a5fa" },
+      Build:       { bg: "#f59e0b22", text: "#f59e0b" },
+      Copywriting: { bg: "#a78bfa22", text: "#a78bfa" },
+      Scraping:    { bg: "#ff6b3522", text: "#ff6b35" },
+      Review:      { bg: "#64748b22", text: "#94a3b8" },
+      Setup:       { bg: "#38bdf822", text: "#38bdf8" },
+      Launch:      { bg: "#00ff9422", text: "#00ff94" },
+      Action:      { bg: "#f472b622", text: "#f472b6" },
+      Milestones:  { bg: "#ffd60022", text: "#ffd600" },
+    };
+
+    const columns = [
+      {
+        id: "niche", label: "STEP 1", icon: "🎯", title: "Pick Your Niches", time: "~20 min",
+        cards: [
+          { id: "c1", title: "Niche Criteria Checklist", tag: "Validation", tasks: [
+            "100% digital business? (agency, SaaS, e-com, coaching — NOT brick & mortar)",
+            "Single sale/client generates $5,000+ for them?",
+            "US or low-compliance market?",
+            "No heavy compliance (no healthcare, legal, EU-GDPR)?",
+            "Can reach decision makers by email or LinkedIn?",
+            "10,000+ companies exist in this niche?",
+          ]},
+          { id: "c2", title: "Select & Validate Niche A", tag: "Research", tasks: [
+            "Write down Niche A (e.g. 'PPC agencies')",
+            "Google '[niche] average client value' — confirm $5k+",
+            "LinkedIn search: confirm 10,000+ people in this niche",
+            "Niche A passes ALL 6 criteria ✓",
+          ]},
+          { id: "c3", title: "Select & Validate Niche B", tag: "Research", tasks: [
+            "Write down Niche B (e.g. 'online coaches')",
+            "Google '[niche] average program price' — confirm $5k+",
+            "Check school.com or LinkedIn — confirm large active pool",
+            "Niche B passes ALL 6 criteria ✓",
+            "Niches A & B are different enough to test separately",
+          ]},
+        ],
+      },
+      {
+        id: "offers", label: "STEP 2", icon: "💡", title: "Build Your Offers", time: "~45 min",
+        cards: [
+          { id: "c4", title: "Find Real Problems on Reddit", tag: "Research", tasks: [
+            "Create free account at gummysearch.com",
+            "New Audience → type Niche A → auto-find subreddits",
+            "Review & adjust subreddit list → Create Audience",
+            "Search 'I hate' → sort by upvotes → read top 10 posts",
+            "Search title '?' → sort upvotes → read top 10 posts",
+            "Write down 2–3 recurring emotional problems for Niche A",
+            "Repeat full process for Niche B",
+          ]},
+          { id: "c5", title: "Validate Each Problem", tag: "Validation", tasks: [
+            "Problem mentioned by multiple different people?",
+            "Solving it = direct revenue gain or time saved?",
+            "Could AI/automation plausibly solve this?",
+            "Is this felt by the DECISION MAKER, not just an employee?",
+          ]},
+          { id: "c6", title: "Build AI Solutions", tag: "Build", tasks: [
+            "Write each problem in one sentence (plain language)",
+            "Write a plausible AI-powered solution for each",
+            "Does each solution have a tangible deliverable?",
+            "Could you deliver a basic version within 72 hours?",
+            "2 solutions per niche = 4 solutions total ✓",
+          ]},
+          { id: "c7", title: "Write Time-Bound Guarantees", tag: "Copywriting", tasks: [
+            "Formula: 'I will deliver [X] in [Y days] or [Z consequence]'",
+            "Is the promise specific and measurable?",
+            "Is the consequence strong? (money back / work for free)",
+            "Does the guarantee lower risk to ZERO for the prospect?",
+            "Would YOU take this offer if someone pitched it to you?",
+            "4 offers total (2 per niche), each with a guarantee ✓",
+          ]},
+        ],
+      },
+      {
+        id: "leads", label: "STEP 3", icon: "🔍", title: "Scrape Your Leads", time: "~2–3 hrs",
+        cards: [
+          { id: "c8", title: "Method A: Airscale + AnyMailFinder", tag: "Scraping", tasks: [
+            "airscale.io → Find Companies → keyword + United States",
+            "Size 1–10 → Load 1,000 → export '[Niche]-Airscale-1to10'",
+            "Size 11–200 → export '[Niche]-Airscale-11to200'",
+            "Combine both CSVs in Google Sheets + add 'size' column",
+            "Scan 20 rows manually — 80%+ look correct?",
+            "Airscale: Find Domain with Google → run on all rows",
+            "anymailfinder.com → New Bulk → Decision Maker Search",
+            "Upload CSV → map Company Name + Domain → enrich",
+            "Download → label '[Niche]-Airscale-Emails'",
+            "40%+ of rows have an email? If not, add more rows.",
+          ]},
+          { id: "c9", title: "Method B: Sales Nav + Vain.io", tag: "Scraping", tasks: [
+            "LinkedIn Sales Nav → Job Titles: CEO, Founder, Owner, Partner",
+            "Keywords: 2–3 terms (e.g. 'performance agency', 'PPC')",
+            "Geography: United States only",
+            "Result count: 1,000–2,000. Adjust if outside range.",
+            "Open 10 random profiles — 8/10 match target buyer?",
+            "Copy the full Sales Nav URL",
+            "vain.io → New Order → paste URL → connect LinkedIn cookie",
+            "Download CSV → filter rows WITH emails → save separately",
+            "Upload remaining to anymailfinder → Person Name Search",
+            "Combine both files → label '[Niche]-SalesNav-Emails'",
+            "700+ emails in combined list? If not, expand the search.",
+          ]},
+          { id: "c10", title: "Lead Quality Validation", tag: "Validation", tasks: [
+            "Manually scan 20 random rows per list",
+            "First names clean? (no 'N/A', no company names)",
+            "Remove info@, hello@, contact@, support@ addresses",
+            "Google 3–5 companies — look like real businesses?",
+            "Each final list: 700–2,000 clean emails ✓",
+          ]},
+          { id: "c11", title: "Lead Totals Check", tag: "Review", tasks: [
+            "Niche A — Method A: 700–2,000 emails ready ✓",
+            "Niche A — Method B: 700–2,000 emails ready ✓",
+            "Niche B — Method A: 700–2,000 emails ready ✓",
+            "Niche B — Method B: 700–2,000 emails ready ✓",
+            "All 4 CSVs clearly labeled — ready to upload ✓",
+          ]},
+        ],
+      },
+      {
+        id: "copy", label: "STEP 4", icon: "✍️", title: "Write Your Copy", time: "~1–2 hrs",
+        cards: [
+          { id: "c12", title: "Source Winning Email Structures", tag: "Research", tasks: [
+            "Find 3–5 cold emails from your inbox you actually opened",
+            "Note structure: opening, offer placement, length",
+            "Find 1 short (2–4 lines) and 1 long (8–12 lines) template",
+            "Strip their specifics — keep only the skeleton",
+          ]},
+          { id: "c13", title: "Variant A — Long Form", tag: "Copywriting", tasks: [
+            "Opening: sounds like you watched/read their content",
+            "Opening works for anyone in the niche?",
+            "ID yourself: who you are + 1 credibility point",
+            "Offer: state ONLY the outcome, not the tool or process",
+            "Social proof: 1 sentence — client, result, or claim",
+            "Guarantee: mention performance-based / no-risk angle",
+            "CTA: single low-friction ask ('Worth a 15-min call?')",
+            "Read aloud — sounds human-written to one specific person?",
+            "Remove all buzzwords (leverage, synergy, cutting-edge)",
+            "Under 150 words? Cut anything that doesn't earn its place.",
+          ]},
+          { id: "c14", title: "Variant B — Short Form", tag: "Copywriting", tasks: [
+            "3–5 lines max",
+            "Open with curiosity hook: 'If I could [outcome] for [low ask]...'",
+            "1 line social proof (optional — only if it fits naturally)",
+            "End with yes/no question — easy to reply",
+            "Add 1 deliberate flaw: 'Not sure if relevant, but...'",
+            "Would a real person send this from their phone?",
+          ]},
+          { id: "c15", title: "Subject Lines", tag: "Copywriting", tasks: [
+            "Option 1 — Personal/vague: '[niche] thing' or 'quick thought'",
+            "Option 2 — Outcome: 'more [clients/revenue] — thoughts?'",
+            "Option 3 — Curiosity: 'had an idea for [company type]'",
+            "All subject lines under 8 words?",
+            "No spam trigger words (free, guaranteed, act now)?",
+          ]},
+          { id: "c16", title: "Follow-Up Email", tag: "Copywriting", tasks: [
+            "1–3 lines only — casual nudge, not a re-pitch",
+            "References the first email",
+            "Sends 1 day after initial, same subject thread",
+          ]},
+          { id: "c17", title: "Copy Final QA", tag: "Review", tasks: [
+            "2 variants per offer/niche combo = 8 emails total ✓",
+            "4 follow-up emails (1 per campaign) ✓",
+            "Subject lines ready for all campaigns ✓",
+            "No email pitches 'AI' unless credibility boost",
+            "Every email: personalization + offer + CTA",
+            "Would YOU reply to every email?",
+          ]},
+        ],
+      },
+      {
+        id: "launch", label: "STEP 5", icon: "🚀", title: "Set Up & Launch", time: "~1 hr",
+        cards: [
+          { id: "c18", title: "Platform Setup", tag: "Setup", tasks: [
+            "Log in to Instantly (or Smartlead, etc.)",
+            "20–30 pre-warmed mailboxes available?",
+            "All domains warmed for 2+ weeks?",
+            "Create 8 blank campaigns — name: '[Niche] – [Offer] – [Source]'",
+          ]},
+          { id: "c19", title: "Build Campaign Sequences", tag: "Setup", tasks: [
+            "Paste Variant A as Email 1 (Cmd+Shift+V — no formatting)",
+            "Add Variant B as Email 1 A/B variant (50/50 split)",
+            "Add Follow-Up as Email 2 → delay: 1 day",
+            "Click 'Clean HTML' on EVERY email",
+            "Repeat for all 8 campaigns",
+            "Save all — nothing left in draft state",
+          ]},
+          { id: "c20", title: "Upload Leads", tag: "Setup", tasks: [
+            "Campaign 1: Leads → Upload CSV → select correct file",
+            "Map: email, first name, last name columns",
+            "Preview — names clean? No N/A or numbers in name fields?",
+            "Imported count matches expected count?",
+            "Repeat for all 8 campaigns — each has its OWN unique list",
+          ]},
+          { id: "c21", title: "Mailboxes & Schedule", tag: "Setup", tasks: [
+            "Assign 10 sending mailboxes per campaign",
+            "Different mailboxes per campaign (segregate deliverability)",
+            "Send limit: 30–50 emails/mailbox/day",
+            "Schedule: Mon–Sat, 7am–7pm target timezone",
+            "Email type: Text Only (no HTML, no tracking pixels)",
+          ]},
+          { id: "c22", title: "Pre-Launch QA", tag: "Review", tasks: [
+            "Preview each campaign — [first name] populates correctly?",
+            "[Sending account first name] populates correctly?",
+            "Send test email to yourself — lands in inbox (not spam)?",
+            "Subject lines: no spam words, under 8 words",
+            "All 8 campaigns reviewed and saved ✓",
+          ]},
+          { id: "c23", title: "Go Live 🚀", tag: "Launch", tasks: [
+            "Activate all 8 campaigns",
+            "Note launch timestamp",
+            "Don't check results for 24 hours — let volume build",
+            "Install mobile app → enable push notifications",
+          ]},
+        ],
+      },
+      {
+        id: "replies", label: "STEP 6", icon: "💬", title: "Reply & Book", time: "Ongoing",
+        cards: [
+          { id: "c24", title: "Build 4 Reply Macros", tag: "Setup", tasks: [
+            "Macro 1 — Positive: offer 2 times + cal link",
+            "Macro 2 — Positive + Questions: answer then close for meeting",
+            "Macro 3 — Polite No: ask for LinkedIn connect",
+            "Macro 4 — Follow Later: confirm date, LinkedIn offer",
+            "Test all macros — [name] variables populate?",
+          ]},
+          { id: "c25", title: "The Booking Funnel", tag: "Action", tasks: [
+            "Positive reply → respond within 10 minutes",
+            "Use Macro 1 — 2 times + your cal link + their cal option",
+            "They give a time → send calendar invite immediately",
+            "They send calendar → book earliest slot that works",
+            "Booked → confirm reply + add prep note to your calendar",
+          ]},
+          { id: "c26", title: "Reply Type Playbook", tag: "Action", tasks: [
+            "'How did you get my email?' → explain, don't apologize",
+            "'Tell me more' → Macro 2, answer briefly, close for call",
+            "'What does it cost?' → don't give price, book a call instead",
+            "'Send case studies' → 1–2 results then ask for call",
+            "Hard no / unsubscribe → click unsub, no reply needed",
+            "Polite no → Macro 3, LinkedIn connect, nurture later",
+            "Never rewrite campaign from <10 negative replies",
+          ]},
+          { id: "c27", title: "Daily Tracking", tag: "Review", tasks: [
+            "Log: total replies, positive replies, meetings booked/campaign",
+            "Track reply % and positive reply % separately",
+            "Replying to 100% of positives same day?",
+            "Day 3: at least 1 meeting booked? If not → Step 7 now",
+          ]},
+        ],
+      },
+      {
+        id: "iterate", label: "STEP 7", icon: "📈", title: "Cut & Scale", time: "Weekly",
+        cards: [
+          { id: "c28", title: "48–72 Hour Review", tag: "Review", tasks: [
+            "Pull reply rates for all 8 campaigns",
+            "Sort from highest to lowest",
+            "Flag <1% reply rate as 'underperforming'",
+            "Flag >3% reply rate as 'winner'",
+            "High replies + 0% positive = hook works, offer doesn't",
+          ]},
+          { id: "c29", title: "Diagnose & Fix Underperformers", tag: "Action", tasks: [
+            "Pause campaigns <1% (don't delete)",
+            "Copy problem? → Rewrite opening line + subject only",
+            "Offer problem? → Swap to a different offer from Step 2",
+            "Lead quality? → Swap scraping method or tighten filters",
+            "Re-test with 200–300 fresh leads before scaling again",
+          ]},
+          { id: "c30", title: "Scale Winners", tag: "Action", tasks: [
+            "Campaigns >3%: upload 500–1,000 more leads",
+            "Add 5 more mailboxes to winning campaigns",
+            "Clone winner → test new copy variant (same offer)",
+            "Clone winner → test new audience segment (same niche)",
+          ]},
+          { id: "c31", title: "Weekly Benchmarks", tag: "Milestones", tasks: [
+            "Week 1: 2%+ average reply rate",
+            "Week 2: 3%+ after cutting non-performers",
+            "Week 4: 4–5%+ on best campaigns",
+            "Month 1: 1 paying client or 10+ qualified meetings",
+            "Ongoing: cost per meeting → $3–$5 target",
+            "Cost $50+? Niche or offer is wrong → back to Step 1",
+          ]},
+        ],
+      },
+    ];
+
+    function Card({ card, color, onToggle, checked }) {
+      const [open, setOpen] = useState(false);
+      const done = card.tasks.filter((_, i) => checked[`${card.id}-${i}`]).length;
+      const total = card.tasks.length;
+      const pct = Math.round((done / total) * 100);
+      const allDone = done === total;
+      const tag = TAG_COLORS[card.tag] || TAG_COLORS.Review;
+
+      return (
+        <div style={{
+          background: allDone ? "#0b180b" : "#141414",
+          border: `1px solid ${allDone ? color + "40" : "#232323"}`,
+          borderRadius: 6, overflow: "hidden", marginBottom: 8,
+          transition: "border-color 0.2s", cursor: "pointer",
+        }}>
+          <div onClick={() => setOpen(o => !o)} style={{ padding: "10px 12px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 7 }}>
+              <div style={{
+                marginTop: 2, width: 14, height: 14, borderRadius: 2, flexShrink: 0,
+                border: `1.5px solid ${allDone ? color : "#333"}`,
+                background: allDone ? color : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {allDone && <span style={{ color: "#000", fontSize: 8, fontWeight: "bold", lineHeight: 1 }}>✓</span>}
+              </div>
+              <span style={{
+                fontSize: 12, fontWeight: "bold", color: allDone ? "#555" : "#ddd",
+                lineHeight: 1.4, flex: 1, userSelect: "none",
+                textDecoration: allDone ? "line-through" : "none",
+              }}>{card.title}</span>
+              <span style={{ fontSize: 10, color: "#333", flexShrink: 0, marginTop: 2 }}>{open ? "▲" : "▼"}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{
+                fontSize: 9, letterSpacing: 1, padding: "2px 7px", borderRadius: 3,
+                background: tag.bg, color: tag.text, fontWeight: "bold", textTransform: "uppercase",
+              }}>{card.tag}</span>
+              <div style={{ flex: 1, height: 2, background: "#1a1a1a", borderRadius: 1, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${pct}%`, background: color, transition: "width 0.3s" }} />
+              </div>
+              <span style={{ fontSize: 9, color: "#333", flexShrink: 0 }}>{done}/{total}</span>
+            </div>
+          </div>
+
+          {open && (
+            <div style={{ padding: "0 10px 10px", borderTop: "1px solid #1a1a1a" }}>
+              {card.tasks.map((task, i) => {
+                const key = `${card.id}-${i}`;
+                const tDone = !!checked[key];
+                return (
+                  <div key={i} onClick={e => { e.stopPropagation(); onToggle(key); }} style={{
+                    display: "flex", alignItems: "flex-start", gap: 9,
+                    padding: "6px 6px", borderRadius: 3, cursor: "pointer",
+                    background: tDone ? "#0b160b" : "transparent", marginTop: 3,
+                  }}>
+                    <div style={{
+                      width: 14, height: 14, borderRadius: 2, flexShrink: 0, marginTop: 1,
+                      border: `1.5px solid ${tDone ? color : "#2a2a2a"}`,
+                      background: tDone ? color : "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {tDone && <span style={{ color: "#000", fontSize: 8, fontWeight: "bold", lineHeight: 1 }}>✓</span>}
+                    </div>
+                    <span style={{
+                      fontSize: 11, lineHeight: 1.6, color: tDone ? "#3a3a3a" : "#999",
+                      textDecoration: tDone ? "line-through" : "none", userSelect: "none",
+                    }}>{task}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const [checked, setChecked] = useState({});
+      const onToggle = key => setChecked(prev => ({ ...prev, [key]: !prev[key] }));
+
+      const allTasks = columns.flatMap(col => col.cards.flatMap(card => card.tasks.map((_, i) => `${card.id}-${i}`)));
+      const totalDone = allTasks.filter(k => checked[k]).length;
+      const totalAll = allTasks.length;
+      const globalPct = Math.round((totalDone / totalAll) * 100);
+
+      return (
+        <div style={{ minHeight: "100vh", background: "#090909", display: "flex", flexDirection: "column" }}>
+          {/* Top bar */}
+          <div style={{
+            padding: "0 24px", height: 52, borderBottom: "1px solid #161616",
+            display: "flex", alignItems: "center", gap: 20, flexShrink: 0, background: "#0a0a0a",
+          }}>
+            <div>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, color: "#fff", letterSpacing: 3, lineHeight: 1 }}>
+                Sell an AI Service <span style={{ color: "#00FF94" }}>From Scratch</span>
+              </div>
+              <div style={{ fontSize: 9, color: "#222", letterSpacing: 3, marginTop: 1 }}>COLD OUTREACH EXECUTION BOARD</div>
+            </div>
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 160, height: 3, background: "#161616", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${globalPct}%`, background: "linear-gradient(90deg, #00FF94, #38BDF8)", transition: "width 0.4s" }} />
+              </div>
+              <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, color: "#00FF94", letterSpacing: 2 }}>{globalPct}%</span>
+              <span style={{ fontSize: 10, color: "#333" }}>{totalDone}/{totalAll}</span>
+            </div>
+          </div>
+
+          {/* Board */}
+          <div style={{ flex: 1, overflowX: "auto", padding: "20px 20px 40px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+            {columns.map(col => {
+              const color = COLORS[col.label];
+              const keys = col.cards.flatMap(card => card.tasks.map((_, i) => `${card.id}-${i}`));
+              const done = keys.filter(k => checked[k]).length;
+              const colDone = done === keys.length;
+
+              return (
+                <div key={col.id} style={{
+                  width: 272, flexShrink: 0, background: "#0e0e0e",
+                  border: `1px solid ${colDone ? color + "35" : "#1c1c1c"}`,
+                  borderRadius: 8, overflow: "hidden",
+                }}>
+                  <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid #141414", background: colDone ? "#0b180b" : "#111" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 14 }}>{col.icon}</span>
+                      <div style={{
+                        fontFamily: "'Bebas Neue', sans-serif", fontSize: 11, letterSpacing: 2,
+                        padding: "2px 8px", borderRadius: 3,
+                        background: colDone ? color : "transparent",
+                        color: colDone ? "#000" : color,
+                        border: `1px solid ${colDone ? color : color + "50"}`,
+                      }}>{colDone ? "✓ DONE" : col.label}</div>
+                      <span style={{ fontSize: 9, color: "#333", letterSpacing: 1 }}>{col.time}</span>
+                      <span style={{ marginLeft: "auto", fontSize: 10, color: "#333" }}>{done}/{keys.length}</span>
+                    </div>
+                    <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, color: colDone ? color : "#fff", letterSpacing: 2, lineHeight: 1, marginBottom: 8 }}>
+                      {col.title}
+                    </div>
+                    <div style={{ background: "#1a1a1a", height: 2, borderRadius: 1, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${Math.round((done / keys.length) * 100)}%`, background: color, transition: "width 0.3s" }} />
+                    </div>
+                  </div>
+                  <div style={{ padding: "10px 10px 4px", maxHeight: "calc(100vh - 160px)", overflowY: "auto" }}>
+                    {col.cards.map(card => (
+                      <Card key={card.id} card={card} color={color} onToggle={onToggle} checked={checked} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
